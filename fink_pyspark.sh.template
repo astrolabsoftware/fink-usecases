@@ -1,0 +1,31 @@
+#!/bin/bash
+
+DEPLOY_FINK_PYTHON=true
+# Grab Fink and Python version numbers
+FINK_VERSION=`fink --version`
+PYTHON_VERSION=`python -c "import platform; print(platform.python_version()[:3])"`
+
+if [[ $DEPLOY_FINK_PYTHON != "false" ]]; then
+       cd $FINK_HOME
+          python3 setup.py bdist_egg
+          PYTHON_EXTRA_FILE="--py-files ${FINK_HOME}/dist/fink_broker-${FINK_VERSION}-py${PYTHON_VERSION}.egg"
+          echo "Distributing ${PYTHON_EXTRA_FILE}"
+       cd -
+fi
+
+FINK_PACKAGES=\
+za.co.absa:abris_2.11:3.1.1,\
+org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.4,\
+org.apache.spark:spark-avro_2.11:2.4.4,\
+org.apache.hbase:hbase-client:2.0.5,\
+org.apache.hbase:hbase-common:2.0.5,\
+org.apache.hbase:hbase-mapreduce:2.0.5
+
+PYSPARK_DRIVER_PYTHON_OPTS="/opt/anaconda/bin/jupyter-notebook --debug --no-browser --port=${PORT}" pyspark \
+    --master mesos://vm-75063.lal.in2p3.fr:5050 \
+    --conf spark.mesos.principal=xx \
+    --conf spark.mesos.secret=yy \
+    --conf spark.mesos.role=zz \
+    --conf spark.executorEnv.HOME=$HOME\
+    --driver-memory 20G --executor-memory 31G --conf spark.cores.max=68 --conf spark.executor.cores=17 ${PYTHON_EXTRA_FILE}\
+    --packages ${FINK_PACKAGES}
